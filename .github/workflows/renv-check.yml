@@ -1,0 +1,75 @@
+# Workflow for checking renv lockfile 
+name: renv-check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  renv-check:
+    if: github.event.repository.is_template == true
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - name: Install Commonsystem dependencies for R packages
+        if: runner.os == 'Linux'
+        run: |
+          # Install common system dependencies for R packages that need them
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfreetype6-dev \
+            libpng-dev \
+            libtiff5-dev \
+            libjpeg-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libfontconfig1-dev \
+            libcairo2-dev \
+            libpango1.0-dev \
+            libgdal-dev \
+            libproj-dev \
+            libgeos-dev \
+            libudunits2-dev \
+            libxml2-dev \
+            libssl-dev \
+            libcurl4-openssl-dev
+
+      - uses: r-lib/actions/setup-renv@v2
+        with:
+          cache-version: 1
+
+      - name: Restore renv environment
+        run: renv::restore()
+        shell: Rscript {0}
+
+      - name: Initialize project
+        run: esqlabsR::initProject()
+        shell: Rscript {0}
+
+      - name: Print directory tree
+        run: |
+          tree -L 3
+        
