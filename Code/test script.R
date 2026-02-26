@@ -1,0 +1,1 @@
+test testInheritedMethods(t)
